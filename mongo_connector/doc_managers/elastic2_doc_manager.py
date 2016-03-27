@@ -167,6 +167,7 @@ class DocManager(DocManagerBase):
     @wrap_exceptions
     def bulk_upsert(self, docs, namespace, timestamp):
         """Insert multiple documents into Elasticsearch."""
+
         def docs_to_upsert():
             doc = None
             for doc in docs:
@@ -179,6 +180,7 @@ class DocManager(DocManagerBase):
                     "_id": doc_id,
                     "_source": self._formatter.format_document(doc)
                 }
+
                 document_meta = {
                     "_index": self.meta_index_name,
                     "_type": self.meta_type,
@@ -188,12 +190,15 @@ class DocManager(DocManagerBase):
                         "_ts": timestamp
                     }
                 }
+                if doc_type == 'review':
+                    document_action["_parent"] = str(doc['vendor'])
                 yield document_action
                 yield document_meta
             if doc is None:
                 raise errors.EmptyDocsError(
                     "Cannot upsert an empty sequence of "
                     "documents into Elastic Search")
+
         try:
             kw = {}
             if self.chunk_size > 0:
