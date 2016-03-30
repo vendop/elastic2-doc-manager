@@ -154,9 +154,14 @@ class DocManager(DocManagerBase):
             "_ts": timestamp
         }
         # Index the source document, using lowercase namespace as index name.
-        self.elastic.index(index=index, doc_type=doc_type,
-                           body=self._formatter.format_document(doc), id=doc_id,
-                           refresh=(self.auto_commit_interval == 0))
+        if doc_type == 'review':
+            self.elastic.index(index=index, doc_type=doc_type, parent=doc['vendor'],
+                               body=self._formatter.format_document(doc), id=doc_id,
+                               refresh=(self.auto_commit_interval == 0))
+        else:
+            self.elastic.index(index=index, doc_type=doc_type,
+                               body=self._formatter.format_document(doc), id=doc_id,
+                               refresh=(self.auto_commit_interval == 0))
         # Index document metadata with original namespace (mixed upper/lower).
         self.elastic.index(index=self.meta_index_name, doc_type=self.meta_type,
                            body=bson.json_util.dumps(metadata), id=doc_id,
