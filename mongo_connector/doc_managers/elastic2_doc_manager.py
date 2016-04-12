@@ -134,8 +134,17 @@ class DocManager(DocManagerBase):
         """
         self.commit()
         index, doc_type = self._index_and_mapping(namespace)
-        document = self.elastic.get(index=index, doc_type=doc_type,
-                                    id=u(document_id))
+        if doc_type == 'review':
+            document = self.elastic.search(index=index, doc_type=doc_type, body={
+                "query": {
+                    "match": {
+                        "_id": u(document_id)
+                    }
+                }
+            })
+            document = document['hits']['hits'][0]
+        else:
+            document = self.elastic.get(index=index, doc_type=doc_type, id=u(document_id))
         updated = self.apply_update(document['_source'], update_spec)
         # _id is immutable in MongoDB, so won't have changed in update
         updated['_id'] = document['_id']
