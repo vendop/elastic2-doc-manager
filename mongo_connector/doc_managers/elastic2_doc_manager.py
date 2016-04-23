@@ -271,9 +271,22 @@ class DocManager(DocManagerBase):
     def remove(self, document_id, namespace, timestamp):
         """Remove a document from Elasticsearch."""
         index, doc_type = self._index_and_mapping(namespace)
-        self.elastic.delete(index=index, doc_type=doc_type,
-                            id=u(document_id),
-                            refresh=(self.auto_commit_interval == 0))
+        if doc_type == 'review':
+            document = self.elastic.search(index=index, doc_type=doc_type, body={
+                "query": {
+                    "match": {
+                        "_id": u(document_id)
+                    }
+                }
+            })
+            document = document['hits']['hits'][0]
+            self.elastic.delete(index=index, doc_type=doc_type,
+                                id=u(document_id), parent=document['_source']['vendor'],
+                                refresh=(self.auto_commit_interval == 0))
+        else:
+            self.elastic.delete(index=index, doc_type=doc_type,
+                                id=u(document_id),
+                                refresh=(self.auto_commit_interval == 0))
         self.elastic.delete(index=self.meta_index_name, doc_type=self.meta_type,
                             id=u(document_id),
                             refresh=(self.auto_commit_interval == 0))
