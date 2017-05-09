@@ -134,7 +134,7 @@ class DocManager(DocManagerBase):
         """
         self.commit()
         index, doc_type = self._index_and_mapping(namespace)
-        if doc_type == 'review':
+        if doc_type == 'review' or doc_type == 'enterprise_vendor':
             document = self.elastic.search(index=index, doc_type=doc_type, body={
                 "query": {
                     "match": {
@@ -163,7 +163,7 @@ class DocManager(DocManagerBase):
             "_ts": timestamp
         }
         # Index the source document, using lowercase namespace as index name.
-        if doc_type == 'review':
+        if doc_type == 'review' or doc_type == 'enterprise_vendor':
             self.elastic.index(index=index, doc_type=doc_type, parent=doc['vendor'],
                                body=self._formatter.format_document(doc), id=doc_id,
                                refresh=(self.auto_commit_interval == 0))
@@ -204,7 +204,7 @@ class DocManager(DocManagerBase):
                         "_ts": timestamp
                     }
                 }
-                if doc_type == 'review':
+                if doc_type == 'review' or doc_type == 'enterprise_vendor':
                     document_action["_parent"] = str(doc['vendor'])
                 yield document_action
                 yield document_meta
@@ -271,7 +271,7 @@ class DocManager(DocManagerBase):
     def remove(self, document_id, namespace, timestamp):
         """Remove a document from Elasticsearch."""
         index, doc_type = self._index_and_mapping(namespace)
-        if doc_type == 'review':
+        if doc_type == 'review' or doc_type == 'enterprise_vendor':
             document = self.elastic.search(index=index, doc_type=doc_type, body={
                 "query": {
                     "match": {
