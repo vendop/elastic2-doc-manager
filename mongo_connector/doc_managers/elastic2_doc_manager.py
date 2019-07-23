@@ -134,7 +134,7 @@ class DocManager(DocManagerBase):
         """
         self.commit()
         index, doc_type = self._index_and_mapping(namespace)
-        if doc_type == 'review' or doc_type == 'enterprise_vendor':
+        if doc_type == 'review' or doc_type == 'enterprise_vendor' or doc_type == 'message_post':
             document = self.elastic.search(index=index, doc_type=doc_type, body={
                 "query": {
                     "match": {
@@ -165,6 +165,10 @@ class DocManager(DocManagerBase):
         # Index the source document, using lowercase namespace as index name.
         if doc_type == 'review' or doc_type == 'enterprise_vendor':
             self.elastic.index(index=index, doc_type=doc_type, parent=doc['vendor'],
+                               body=self._formatter.format_document(doc), id=doc_id,
+                               refresh=(self.auto_commit_interval == 0))
+        elif doc_type == 'message_post':
+            self.elastic.index(index=index, doc_type=doc_type, parent=doc['thread'],
                                body=self._formatter.format_document(doc), id=doc_id,
                                refresh=(self.auto_commit_interval == 0))
         else:
@@ -206,6 +210,8 @@ class DocManager(DocManagerBase):
                 }
                 if doc_type == 'review' or doc_type == 'enterprise_vendor':
                     document_action["_parent"] = str(doc['vendor'])
+                elif doc_type == 'message_post':
+                    document_action["_parent"] = str(doc['thread'])
                 yield document_action
                 yield document_meta
             if doc is None:
@@ -283,6 +289,18 @@ class DocManager(DocManagerBase):
             self.elastic.delete(index=index, doc_type=doc_type,
                                 id=u(document_id), parent=document['_source']['vendor'],
                                 refresh=(self.auto_commit_interval == 0))
+        elif doc_type == 'message_post':
+                document = self.elastic.search(index=index, doc_type=doc_type, body={
+                    "query": {
+                        "match": {
+                            "_id": u(document_id)
+                        }
+                    }
+                })
+                document = document['hits']['hits'][0]
+                self.elastic.delete(index=index, doc_type=doc_type,
+                                    id=u(document_id), parent=document['_source']['thread'],
+                                    refresh=(self.auto_commit_interval == 0))
         else:
             self.elastic.delete(index=index, doc_type=doc_type,
                                 id=u(document_id),
