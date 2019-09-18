@@ -134,7 +134,7 @@ class DocManager(DocManagerBase):
         """
         self.commit()
         index, doc_type = self._index_and_mapping(namespace)
-        if doc_type == 'review' or doc_type == 'enterprise_vendor' or doc_type == 'message_post':
+        if doc_type == 'review' or doc_type == 'enterprise_vendor' or doc_type == 'message_post' or doc_type == 'enterprise_part_project_member':
             document = self.elastic.search(index=index, doc_type=doc_type, body={
                 "query": {
                     "match": {
@@ -169,6 +169,10 @@ class DocManager(DocManagerBase):
                                refresh=(self.auto_commit_interval == 0))
         elif doc_type == 'message_post':
             self.elastic.index(index=index, doc_type=doc_type, parent=doc['thread'],
+                               body=self._formatter.format_document(doc), id=doc_id,
+                               refresh=(self.auto_commit_interval == 0))
+        elif doc_type == 'enterprise_part_project_member':
+            self.elastic.index(index=index, doc_type=doc_type, parent=doc['part'],
                                body=self._formatter.format_document(doc), id=doc_id,
                                refresh=(self.auto_commit_interval == 0))
         else:
@@ -212,6 +216,8 @@ class DocManager(DocManagerBase):
                     document_action["_parent"] = str(doc['vendor'])
                 elif doc_type == 'message_post':
                     document_action["_parent"] = str(doc['thread'])
+                elif doc_type == 'enterprise_part_project_member':
+                    document_action["_parent"] = str(doc['part'])
                 yield document_action
                 yield document_meta
             if doc is None:
@@ -301,6 +307,19 @@ class DocManager(DocManagerBase):
                 self.elastic.delete(index=index, doc_type=doc_type,
                                     id=u(document_id), parent=document['_source']['thread'],
                                     refresh=(self.auto_commit_interval == 0))
+        elif doc_type == 'enterprise_part_project_member':
+                document = self.elastic.search(index=index, doc_type=doc_type, body={
+                    "query": {
+                        "match": {
+                            "_id": u(document_id)
+                        }
+                    }
+                })
+                document = document['hits']['hits'][0]
+                self.elastic.delete(index=index, doc_type=doc_type,
+                                    id=u(document_id), parent=document['_source']['part'],
+                                    refresh=(self.auto_commit_interval == 0))
+
         else:
             self.elastic.delete(index=index, doc_type=doc_type,
                                 id=u(document_id),
